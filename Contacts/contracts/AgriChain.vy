@@ -1,4 +1,4 @@
-# pragma version 0.4.0
+# pragma version ^0.4.0
 # @license MIT
 
 # AgriChain: Blockchain-Based Agricultural Supply Chain Platform
@@ -102,7 +102,15 @@ def listProduce(produce_name: String[100], quantity: uint256, price_per_unit: ui
     self.farmer_produces[msg.sender].append(produce_id)
 
     # Emit event
-    log ProduceListed(produce_id, msg.sender, produce_name, quantity, price_per_unit, total_price, block.timestamp)
+    log ProduceListed(
+        produce_id=produce_id,
+        farmer=msg.sender,
+        name=produce_name,
+        quantity=quantity,
+        price_per_unit=price_per_unit,
+        total_price=total_price,
+        timestamp=block.timestamp
+    )
 
 @external
 @payable
@@ -133,7 +141,15 @@ def buyProduce(produce_id: uint256):
     send(produce.farmer, msg.value)
 
     # Emit event
-    log ProduceSold(produce_id, produce.farmer, msg.sender, produce.name, produce.quantity, produce.total_price, block.timestamp)
+    log ProduceSold(
+        produce_id=produce_id,
+        farmer=produce.farmer,
+        buyer=msg.sender,
+        name=produce.name,
+        quantity=produce.quantity,
+        total_price=produce.total_price,
+        timestamp=block.timestamp
+    )
 
 @external
 @view

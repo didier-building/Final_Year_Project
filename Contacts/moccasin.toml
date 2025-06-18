@@ -1,5 +1,5 @@
 [project]
-src = "src"
+src = "contracts"
 out = "out"
 dot_env = ".env"
 

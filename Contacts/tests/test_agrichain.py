@@ -3,7 +3,7 @@ from moccasin.boa_tools import VyperContract
 
 def test_initial_state(agrichain_contract):
     """Test initial contract state"""
-    assert agrichain_contract.getTotalProduces() == 1  # One from deployment
+    assert agrichain_contract.getTotalProduces() == 1, "Initial produce count is off" # One from deployment
     assert len(agrichain_contract.getAvailableProduces()) == 1
 
 def test_list_produce(agrichain_contract):
@@ -55,7 +55,9 @@ def test_get_available_produces(agrichain_contract):
 
 def test_farmer_produces_tracking(agrichain_contract):
     """Test farmer produce tracking"""
-    farmer_address = agrichain_contract.address  # Using contract address as farmer for testing
+    # Get the deployer address (which is the farmer in our tests)
+    import boa
+    farmer_address = boa.env.eoa
 
     initial_farmer_produces = agrichain_contract.getFarmerProduces(farmer_address)
     initial_count = len(initial_farmer_produces)
