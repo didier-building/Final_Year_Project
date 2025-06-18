@@ -69,3 +69,5 @@ AgriChain/
 - Smart contract deployed to Sepolia
 - Django API serving blockchain data
 - Clean README and project report PDF
+
+ #It's Me to Save the Farmers' Yeilds🌱🌱...Respect🙏 to Y'all farmers👊. 
