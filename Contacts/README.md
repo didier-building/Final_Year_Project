@@ -1,4 +1,4 @@
-# AgriKonnect Project
+# AgriChain Project
 
 🐍 Welcome to your Moccasin project!
 
