@@ -4,12 +4,14 @@
 import axios from 'axios';
 
 // Configure base URL for your Django backend
-// For mobile devices, we need to use the computer's IP address
-// Replace 'YOUR_COMPUTER_IP' with your actual IP address
-const BASE_URL = 'http://172.20.10.5:8000/api'; // Your computer's IP address
+// Use environment variable or fallback to localhost
+const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8000/api';
+const DEBUG_API = process.env.EXPO_PUBLIC_DEBUG_API === 'true';
 
-// Log the URL being used for debugging
-console.log('🔗 API Base URL:', BASE_URL);
+// Log the URL being used for debugging (only in development)
+if (DEBUG_API) {
+  console.log('🔗 API Base URL:', BASE_URL);
+}
 
 // Create axios instance
 const api = axios.create({
@@ -23,11 +25,15 @@ const api = axios.create({
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
-    console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
+    if (DEBUG_API) {
+      console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
+    }
     return config;
   },
   (error) => {
-    console.error('❌ API Request Error:', error);
+    if (DEBUG_API) {
+      console.error('❌ API Request Error:', error);
+    }
     return Promise.reject(error);
   }
 );
@@ -35,11 +41,15 @@ api.interceptors.request.use(
 // Response interceptor with fallback
 api.interceptors.response.use(
   (response) => {
-    console.log(`✅ API Response: ${response.status} ${response.config.url}`);
+    if (DEBUG_API) {
+      console.log(`✅ API Response: ${response.status} ${response.config.url}`);
+    }
     return response;
   },
   (error) => {
-    console.error('❌ API Response Error:', error.response?.data || error.message);
+    if (DEBUG_API) {
+      console.error('❌ API Response Error:', error.response?.data || error.message);
+    }
 
     // Mock data disabled - testing real backend connection
     // if (error.message === 'Network Error' && error.config?.url?.includes('/produces/')) {
@@ -100,6 +110,29 @@ export const produceAPI = {
  */
 export const categoriesAPI = {
   getAll: () => api.get('/categories/'),
+};
+
+/**
+ * User API endpoints
+ */
+export const userAPI = {
+  // Get user profile
+  getProfile: () => api.get('/users/profiles/me/'),
+
+  // Update user profile
+  updateProfile: (profileData) => api.patch('/users/profiles/me/', profileData),
+
+  // Get transaction history
+  getTransactionHistory: (filter = 'all') => {
+    const params = filter !== 'all' ? { type: filter } : {};
+    return api.get('/users/transactions/', { params });
+  },
+
+  // Get farm details
+  getFarmDetails: () => api.get('/users/farms/me/'),
+
+  // Update farm details
+  updateFarmDetails: (farmData) => api.patch('/users/farms/me/', farmData),
 };
 
 /**

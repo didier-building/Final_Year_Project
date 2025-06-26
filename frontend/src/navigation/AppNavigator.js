@@ -13,6 +13,7 @@ import FarmerScreen from '../screens/FarmerScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import ProduceDetailScreen from '../screens/ProduceDetailScreen';
 import ListProduceScreen from '../screens/ListProduceScreen';
+import TransactionHistoryScreen from '../screens/TransactionHistoryScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -39,15 +40,33 @@ function MarketplaceStack() {
 function FarmerStack() {
   return (
     <Stack.Navigator>
-      <Stack.Screen 
-        name="FarmerHome" 
+      <Stack.Screen
+        name="FarmerHome"
         component={FarmerScreen}
         options={{ title: 'My Farm' }}
       />
-      <Stack.Screen 
-        name="ListProduce" 
+      <Stack.Screen
+        name="ListProduce"
         component={ListProduceScreen}
         options={{ title: 'List New Produce' }}
+      />
+    </Stack.Navigator>
+  );
+}
+
+// Profile Stack
+function ProfileStack() {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen
+        name="ProfileHome"
+        component={ProfileScreen}
+        options={{ title: 'Profile' }}
+      />
+      <Stack.Screen
+        name="TransactionHistory"
+        component={TransactionHistoryScreen}
+        options={{ title: 'Transaction History' }}
       />
     </Stack.Navigator>
   );
@@ -86,9 +105,9 @@ function MainTabNavigator() {
         component={FarmerStack}
         options={{ title: 'My Farm' }}
       />
-      <Tab.Screen 
-        name="Profile" 
-        component={ProfileScreen}
+      <Tab.Screen
+        name="Profile"
+        component={ProfileStack}
         options={{ title: 'Profile' }}
       />
     </Tab.Navigator>

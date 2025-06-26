@@ -1,7 +1,7 @@
 /**
  * Profile Screen - User profile and app information
  */
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,12 +9,90 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useWeb3 } from '../hooks/useWeb3';
+import WalletConnect from '../components/WalletConnect';
+import { userAPI } from '../services/api';
 
-export default function ProfileScreen() {
+export default function ProfileScreen({ navigation }) {
+  const {
+    account,
+    isConnected,
+    network,
+    balance,
+    isCorrectNetwork,
+    networkName,
+    connectWallet,
+    disconnectWallet,
+    switchNetwork,
+  } = useWeb3();
+
+  const [userProfile, setUserProfile] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isConnected && account) {
+      loadUserProfile();
+    }
+  }, [isConnected, account]);
+
+  const loadUserProfile = async () => {
+    setLoading(true);
+    try {
+      // Load user profile from API
+      const response = await userAPI.getProfile();
+      setUserProfile(response.data);
+    } catch (error) {
+      console.error('Failed to load user profile:', error);
+      Alert.alert('Error', 'Failed to load your profile.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleFeaturePress = (feature) => {
+    if (!isConnected) {
+      Alert.alert('Wallet Required', 'Please connect your wallet to access this feature.');
+      return;
+    }
     Alert.alert('Coming Soon', `${feature} feature will be available in future updates!`);
+  };
+
+  const handleWalletPress = () => {
+    if (!isConnected) {
+      connectWallet();
+    } else {
+      Alert.alert(
+        'Wallet Connected',
+        `Address: ${account}\nBalance: ${parseFloat(balance).toFixed(4)} ETH\nNetwork: ${networkName}`,
+        [
+          { text: 'Disconnect', onPress: disconnectWallet, style: 'destructive' },
+          { text: 'OK', style: 'default' }
+        ]
+      );
+    }
+  };
+
+  const handleNetworkPress = () => {
+    if (!isConnected) {
+      Alert.alert('Wallet Required', 'Please connect your wallet first.');
+      return;
+    }
+
+    if (!isCorrectNetwork) {
+      Alert.alert(
+        'Wrong Network',
+        `You're connected to ${networkName}. Switch to Sepolia testnet?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Switch', onPress: switchNetwork }
+        ]
+      );
+    } else {
+      Alert.alert('Network Status', `Connected to ${networkName} ✅`);
+    }
   };
 
   const renderProfileItem = (icon, title, subtitle, onPress) => (
@@ -30,14 +108,36 @@ export default function ProfileScreen() {
     </TouchableOpacity>
   );
 
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#2E7D32" />
+        <Text style={styles.loadingText}>Loading profile...</Text>
+      </View>
+    );
+  }
+
   return (
     <ScrollView style={styles.container}>
+      {/* Wallet Connection Section */}
+      <WalletConnect style={styles.walletSection} />
+
       <View style={styles.header}>
         <View style={styles.avatarContainer}>
           <Ionicons name="person-circle-outline" size={80} color="#2E7D32" />
         </View>
-        <Text style={styles.userName}>Demo User</Text>
-        <Text style={styles.userType}>Farmer & Buyer</Text>
+        <Text style={styles.userName}>
+          {userProfile?.username || 'Connect Wallet'}
+        </Text>
+        <Text style={styles.userType}>
+          {userProfile?.userType || 'Please connect your wallet to continue'}
+        </Text>
+        {userProfile?.isVerified && (
+          <View style={styles.verifiedBadge}>
+            <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
+            <Text style={styles.verifiedText}>Verified</Text>
+          </View>
+        )}
       </View>
 
       <View style={styles.section}>
@@ -46,8 +146,8 @@ export default function ProfileScreen() {
         {renderProfileItem(
           'wallet-outline',
           'Wallet Address',
-          '0xf39F...2266',
-          () => handleFeaturePress('Wallet Management')
+          isConnected ? `${account?.slice(0, 6)}...${account?.slice(-4)}` : 'Not connected',
+          handleWalletPress
         )}
         
         {renderProfileItem(
@@ -71,21 +171,21 @@ export default function ProfileScreen() {
         {renderProfileItem(
           'leaf-outline',
           'Farm Information',
-          'Manage your farm details',
+          userProfile?.farmDetails?.farmName || 'Set up your farm',
           () => handleFeaturePress('Farm Management')
         )}
-        
+
         {renderProfileItem(
           'ribbon-outline',
           'Certifications',
-          'Organic and quality certifications',
+          userProfile?.farmDetails?.farmingType || 'Add certifications',
           () => handleFeaturePress('Certifications')
         )}
-        
+
         {renderProfileItem(
           'location-outline',
           'Farm Location',
-          'Set your farm location',
+          userProfile?.farmDetails?.hasLocation ? 'Location set' : 'Set your farm location',
           () => handleFeaturePress('Location Settings')
         )}
       </View>
@@ -97,14 +197,20 @@ export default function ProfileScreen() {
           'link-outline',
           'Transaction History',
           'View all blockchain transactions',
-          () => handleFeaturePress('Transaction History')
+          () => {
+            if (!isConnected) {
+              Alert.alert('Wallet Required', 'Please connect your wallet to view transaction history.');
+              return;
+            }
+            navigation.navigate('TransactionHistory');
+          }
         )}
         
         {renderProfileItem(
           'server-outline',
           'Network Settings',
-          'Anvil Local Network',
-          () => handleFeaturePress('Network Settings')
+          isConnected ? `${networkName} ${isCorrectNetwork ? '✅' : '⚠️'}` : 'Not connected',
+          handleNetworkPress
         )}
       </View>
 
@@ -151,6 +257,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+  },
+  walletSection: {
+    margin: 16,
+    marginBottom: 0,
+  },
   header: {
     backgroundColor: 'white',
     alignItems: 'center',
@@ -171,6 +292,21 @@ const styles = StyleSheet.create({
   userType: {
     fontSize: 16,
     color: '#666',
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E8',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  verifiedText: {
+    fontSize: 12,
+    color: '#4CAF50',
+    fontWeight: 'bold',
+    marginLeft: 4,
   },
   section: {
     backgroundColor: 'white',

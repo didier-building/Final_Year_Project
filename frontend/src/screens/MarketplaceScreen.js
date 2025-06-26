@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { produceAPI, apiUtils } from '../services/api';
+import { colors, spacing, radii, font, shadow } from '../theme';
 
 export default function MarketplaceScreen({ navigation }) {
   const [produces, setProduces] = useState([]);
@@ -22,7 +23,6 @@ export default function MarketplaceScreen({ navigation }) {
   const [filter, setFilter] = useState('all'); // 'all' or 'available'
 
   useEffect(() => {
-    console.log('🔄 MarketplaceScreen: Loading produces with filter:', filter);
     loadProduces();
   }, [filter]);
 
@@ -30,17 +30,18 @@ export default function MarketplaceScreen({ navigation }) {
     try {
       setLoading(true);
       let response;
-      
+
       if (filter === 'available') {
         response = await produceAPI.getAvailable();
       } else {
         response = await produceAPI.getAll();
       }
-      
+
       setProduces(response.data.results || response.data);
     } catch (error) {
+      console.error('Failed to load produces:', error);
       const errorInfo = apiUtils.handleError(error);
-      Alert.alert('Error', errorInfo.message);
+      Alert.alert('Error Loading Produces', errorInfo.message);
     } finally {
       setLoading(false);
     }
@@ -125,21 +126,21 @@ export default function MarketplaceScreen({ navigation }) {
       <Text style={styles.title}>🌾 AgriChain Marketplace</Text>
       <Text style={styles.subtitle}>Fresh produce directly from farmers</Text>
       
-      <View style={styles.filterContainer}>
+      <View style={styles.filterBar}>
         <TouchableOpacity
-          style={[styles.filterButton, filter === 'all' && styles.activeFilter]}
+          style={[styles.filterButton, filter === 'all' && styles.filterButtonActive]}
           onPress={() => setFilter('all')}
         >
-          <Text style={[styles.filterText, filter === 'all' && styles.activeFilterText]}>
+          <Text style={[styles.filterButtonText, filter === 'all' && styles.filterButtonTextActive]}>
             All Produce
           </Text>
         </TouchableOpacity>
         
         <TouchableOpacity
-          style={[styles.filterButton, filter === 'available' && styles.activeFilter]}
+          style={[styles.filterButton, filter === 'available' && styles.filterButtonActive]}
           onPress={() => setFilter('available')}
         >
-          <Text style={[styles.filterText, filter === 'available' && styles.activeFilterText]}>
+          <Text style={[styles.filterButtonText, filter === 'available' && styles.filterButtonTextActive]}>
             Available Only
           </Text>
         </TouchableOpacity>
@@ -193,127 +194,130 @@ export default function MarketplaceScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
+    padding: spacing.md,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
   },
   loadingText: {
     marginTop: 10,
     fontSize: 16,
-    color: '#666',
+    color: colors.textSecondary,
   },
   listContainer: {
-    padding: 16,
+    padding: 0,
   },
   header: {
-    marginBottom: 20,
+    marginBottom: spacing.lg,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2E7D32',
+    fontSize: font.size.xl,
+    fontWeight: font.weight.bold,
+    color: colors.primaryDark,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: spacing.xs,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: font.size.md,
+    color: colors.textSecondary,
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: spacing.lg,
   },
-  filterContainer: {
+  filterBar: {
     flexDirection: 'row',
-    marginBottom: 16,
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+    backgroundColor: colors.card,
+    borderRadius: radii.lg,
+    ...shadow.card,
+    padding: spacing.sm,
   },
   filterButton: {
     flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: 'white',
-    borderRadius: 8,
-    marginHorizontal: 4,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#ddd',
+    paddingVertical: spacing.sm,
+    borderRadius: radii.md,
+    marginHorizontal: spacing.xs,
+    backgroundColor: colors.inputBg,
   },
-  activeFilter: {
-    backgroundColor: '#2E7D32',
-    borderColor: '#2E7D32',
+  filterButtonActive: {
+    backgroundColor: colors.primary,
   },
-  filterText: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
+  filterButtonText: {
+    color: colors.textSecondary,
+    fontSize: font.size.md,
+    fontWeight: font.weight.medium,
   },
-  activeFilterText: {
+  filterButtonTextActive: {
     color: 'white',
+    fontWeight: font.weight.bold,
   },
   syncButton: {
+    backgroundColor: colors.accent,
     flexDirection: 'row',
-    backgroundColor: '#1976D2',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: radii.md,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.md,
+    ...shadow.accent,
   },
   syncButtonText: {
     color: 'white',
-    fontSize: 16,
-    fontWeight: '500',
-    marginLeft: 8,
+    fontSize: font.size.md,
+    fontWeight: font.weight.medium,
+    marginLeft: spacing.xs,
   },
   produceCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-    elevation: 3,
+    backgroundColor: colors.card,
+    borderRadius: radii.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+    ...shadow.card,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: spacing.md,
   },
   produceName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: font.size.lg,
+    fontWeight: font.weight.bold,
+    color: colors.primaryDark,
     flex: 1,
   },
   statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radii.lg,
   },
   availableBadge: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: colors.primary,
   },
   soldBadge: {
-    backgroundColor: '#F44336',
+    backgroundColor: colors.error,
   },
   statusText: {
     color: 'white',
-    fontSize: 12,
-    fontWeight: 'bold',
+    fontSize: font.size.xs,
+    fontWeight: font.weight.bold,
   },
   cardContent: {
-    paddingVertical: 4,
+    paddingVertical: spacing.xs,
   },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   infoText: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 8,
+    fontSize: font.size.sm,
+    color: colors.textSecondary,
+    marginLeft: spacing.sm,
   },
 });

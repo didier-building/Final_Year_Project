@@ -158,6 +158,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://localhost:8081",  # Expo default port
     "http://127.0.0.1:8081",
+    "http://localhost:8082",  # Expo current port
+    "http://127.0.0.1:8082",
     "http://172.20.10.5:8081",  # Expo on network IP
     "http://172.20.10.5:19006",  # Expo web port
 ]
@@ -165,9 +167,21 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOW_CREDENTIALS = True
 
 # Blockchain Configuration
-BLOCKCHAIN_CONFIG = {
-    'ANVIL_RPC_URL': os.getenv('ANVIL_RPC_URL', 'http://127.0.0.1:8545'),
-    'CONTRACT_ADDRESS': os.getenv('CONTRACT_ADDRESS', '0x5FbDB2315678afecb367f032d93F642f64180aa3'),
-    'PRIVATE_KEY': os.getenv('PRIVATE_KEY', '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'),
-    'CHAIN_ID': int(os.getenv('CHAIN_ID', '31337')),
-}
+NETWORK = os.getenv('NETWORK', 'anvil')
+
+if NETWORK == 'sepolia':
+    BLOCKCHAIN_CONFIG = {
+        'RPC_URL': os.getenv('SEPOLIA_RPC_URL', 'https://ethereum-sepolia-rpc.publicnode.com'),
+        'CHAIN_ID': int(os.getenv('SEPOLIA_CHAIN_ID', '11155111')),
+        'CONTRACT_ADDRESS': os.getenv('CONTRACT_ADDRESS'),
+        'PRIVATE_KEY': os.getenv('PRIVATE_KEY'),
+        'NETWORK': 'sepolia'
+    }
+else:  # Default to anvil
+    BLOCKCHAIN_CONFIG = {
+        'RPC_URL': os.getenv('ANVIL_RPC_URL', 'http://127.0.0.1:8545'),
+        'CHAIN_ID': int(os.getenv('CHAIN_ID', '31337')),
+        'CONTRACT_ADDRESS': os.getenv('CONTRACT_ADDRESS', '0x5FbDB2315678afecb367f032d93F642f64180aa3'),
+        'PRIVATE_KEY': os.getenv('PRIVATE_KEY', '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'),
+        'NETWORK': 'anvil'
+    }

@@ -3,33 +3,48 @@ from moccasin.boa_tools import VyperContract
 from moccasin.config import get_active_network
 import boa
 from eth_account import Account
+import os
 
-def deploy_agrichain() -> VyperContract:
-    """Deploy the AgriChain smart contract"""
-
-    # Check if we need to add account (for Anvil network)
-    if not boa.env.eoa:
-        # Get private key from environment variable
-        import os
-        private_key = os.getenv('ANVIL_PRIVATE_KEY')
-        if not private_key:
-            raise ValueError("ANVIL_PRIVATE_KEY environment variable not set")
-
-        account = Account.from_key(private_key)
-        boa.env.add_account(account, force_eoa=True)
-        print(f"✅ Added account: {account.address}")
+def deploy_agrichain_sepolia() -> VyperContract:
+    """Deploy AgriChain contract to Sepolia testnet"""
 
     # Get active network info
     active_network = get_active_network()
 
-    # Display network and account information
-    print("🚀 Deploying AgriChain Smart Contract")
-    print("=" * 50)
+    print("🚀 Deploying AgriChain Smart Contract to Sepolia Testnet")
+    print("=" * 60)
+
+    # Check if we need to add account (for Sepolia network)
+    if not boa.env.eoa:
+        # Try multiple ways to get the private key
+        private_key = os.getenv('SEPOLIA_PRIVATE_KEY') or os.getenv('PRIVATE_KEY')
+
+        # If still not found, use the known key directly for this deployment
+        if not private_key:
+            private_key = "44bff12f938c079fd6f5f57089254401420ea73b068eb31913f1d1670ca347b2"
+            print("⚠️ Using direct private key for deployment")
+
+        if private_key == 'your-sepolia-private-key-here':
+            raise ValueError("Please replace 'your-sepolia-private-key-here' with your actual private key")
+
+        account = Account.from_key(private_key)
+        boa.env.add_account(account, force_eoa=True)
+        print(f"✅ Added Sepolia account: {account.address}")
+
     print(f"🌐 Network: {active_network.name}")
     print(f"👤 Deployer Account: {boa.env.eoa}")
-    print(f"💰 Account Balance: {boa.env.get_balance(boa.env.eoa) / 10**18:.6f} ETH")
-    print("=" * 50)
 
+    # Check balance
+    balance = boa.env.get_balance(boa.env.eoa)
+    balance_eth = balance / 10**18
+    print(f"💰 Account Balance: {balance_eth:.6f} ETH")
+
+    if balance_eth < 0.01:
+        print("⚠️  Warning: Low balance! You may need more Sepolia ETH")
+        print("   Get Sepolia ETH from: https://sepoliafaucet.com/")
+
+    print("=" * 60)
+    
     # Deploy the contract
     agrichain: VyperContract = AgriChain.deploy()
     print("🌾 AgriChain contract deployed successfully!")
@@ -42,7 +57,7 @@ def deploy_agrichain() -> VyperContract:
     # Test basic functionality
     print("\n🧪 Testing basic functionality...")
 
-    # List a sample produce (this will be from the deployer account)
+    # List a sample produce for testing
     print("📝 Listing sample produce...")
     agrichain.listProduce("Organic Tomatoes", 100, 1000000000000000)  # 100 kg at 0.001 ETH per kg
     print("✅ Sample produce listed!")
@@ -67,27 +82,33 @@ def deploy_agrichain() -> VyperContract:
         print(f"   Total price: {produce_details[5]} wei")
         print(f"   Is sold: {produce_details[6]}")
 
-    # Verify contract on explorer if available
+    # Verify contract on Sepolia explorer
     if active_network.has_explorer():
-        print(f"\n🔍 Verifying contract on {active_network.name} explorer...")
+        print(f"\n🔍 Verifying contract on Sepolia Etherscan...")
         try:
             result = active_network.moccasin_verify(agrichain)
             result.wait_for_verification()
             print("✅ Contract verified successfully!")
         except Exception as e:
             print(f"⚠️ Contract verification failed: {e}")
-    else:
-        print(f"\n📝 No explorer available for {active_network.name} network")
+            print("You can manually verify later on Etherscan")
 
-    print("\n" + "=" * 50)
-    print("🎉 Deployment completed successfully!")
+    print("\n" + "=" * 60)
+    print("🎉 Sepolia deployment completed successfully!")
     print(f"📍 Contract Address: {agrichain.address}")
     if active_network.has_explorer():
         explorer_url = f"{active_network.explorer_url}/address/{agrichain.address}"
-        print(f"🔗 Explorer: {explorer_url}")
-    print("=" * 50)
+        print(f"🔗 Etherscan: {explorer_url}")
+
+    print("\n📝 Next steps:")
+    print(f"1. Update your backend .env file:")
+    print(f"   CONTRACT_ADDRESS={agrichain.address}")
+    print(f"   NETWORK=sepolia")
+    print(f"2. Update your frontend to use Sepolia network")
+    print(f"3. Make sure users have Sepolia ETH for transactions")
+    print("=" * 60)
 
     return agrichain
 
 def moccasin_main() -> VyperContract:
-    return deploy_agrichain()
+    return deploy_agrichain_sepolia()

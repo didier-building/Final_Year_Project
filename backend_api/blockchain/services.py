@@ -22,19 +22,29 @@ class Web3Service:
     """Service for interacting with the AgriChain smart contract"""
     
     def __init__(self):
-        self.w3 = Web3(Web3.HTTPProvider(settings.BLOCKCHAIN_CONFIG['ANVIL_RPC_URL']))
+        # Get network configuration
+        self.network = settings.BLOCKCHAIN_CONFIG['NETWORK']
+        self.rpc_url = settings.BLOCKCHAIN_CONFIG['RPC_URL']
+        self.chain_id = settings.BLOCKCHAIN_CONFIG['CHAIN_ID']
 
-        # Add middleware for POA networks (like Anvil)
+        self.w3 = Web3(Web3.HTTPProvider(self.rpc_url))
+
+        # Add middleware for POA networks (like Anvil and some testnets)
         try:
             self.w3.middleware_onion.inject(geth_poa_middleware, layer=0)
         except Exception:
             # For newer versions, middleware might not be needed or different
             pass
-        
+
         # Contract configuration
         self.contract_address = settings.BLOCKCHAIN_CONFIG['CONTRACT_ADDRESS']
         self.private_key = settings.BLOCKCHAIN_CONFIG['PRIVATE_KEY']
         self.account = Account.from_key(self.private_key)
+
+        print(f"🌐 Blockchain Service initialized for {self.network} network")
+        print(f"🔗 RPC URL: {self.rpc_url}")
+        print(f"📍 Contract: {self.contract_address}")
+        print(f"👤 Account: {self.account.address}")
         
         # Load contract ABI (we'll need to add this)
         self.contract_abi = self._load_contract_abi()
@@ -45,62 +55,24 @@ class Web3Service:
     
     def _load_contract_abi(self) -> List[Dict]:
         """Load the contract ABI from the compiled contract"""
-        # For now, we'll define a minimal ABI based on our contract
-        # In production, this should be loaded from the compiled contract files
-        return [
-            {
-                "inputs": [
-                    {"name": "produce_name", "type": "string"},
-                    {"name": "quantity", "type": "uint256"},
-                    {"name": "price_per_unit", "type": "uint256"}
-                ],
-                "name": "listProduce",
-                "outputs": [],
-                "stateMutability": "nonpayable",
-                "type": "function"
-            },
-            {
-                "inputs": [{"name": "produce_id", "type": "uint256"}],
-                "name": "buyProduce",
-                "outputs": [],
-                "stateMutability": "payable",
-                "type": "function"
-            },
-            {
-                "inputs": [{"name": "produce_id", "type": "uint256"}],
-                "name": "getProduceDetails",
-                "outputs": [
-                    {"name": "", "type": "tuple", "components": [
-                        {"name": "id", "type": "uint256"},
-                        {"name": "farmer", "type": "address"},
-                        {"name": "name", "type": "string"},
-                        {"name": "quantity", "type": "uint256"},
-                        {"name": "price_per_unit", "type": "uint256"},
-                        {"name": "total_price", "type": "uint256"},
-                        {"name": "is_sold", "type": "bool"},
-                        {"name": "buyer", "type": "address"},
-                        {"name": "listed_timestamp", "type": "uint256"},
-                        {"name": "sold_timestamp", "type": "uint256"}
-                    ]}
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [],
-                "name": "getAvailableProduces",
-                "outputs": [{"name": "", "type": "uint256[]"}],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [],
-                "name": "getTotalProduces",
-                "outputs": [{"name": "", "type": "uint256"}],
-                "stateMutability": "view",
-                "type": "function"
-            }
-        ]
+        import os
+        abi_file_path = os.path.join(os.path.dirname(__file__), 'AgriChain.json')
+        try:
+            with open(abi_file_path, 'r') as f:
+                contract_data = json.load(f)
+                return contract_data['abi']
+        except Exception as e:
+            print(f"Error loading contract ABI: {e}")
+            # Fallback to minimal ABI if file not found
+            return [
+                {
+                    "inputs": [],
+                    "name": "getTotalProduces",
+                    "outputs": [{"name": "", "type": "uint256"}],
+                    "stateMutability": "view",
+                    "type": "function"
+                }
+            ]
     
     def is_connected(self) -> bool:
         """Check if connected to the blockchain"""
@@ -160,7 +132,7 @@ class Web3Service:
             
             # Sign and send transaction
             signed_txn = self.w3.eth.account.sign_transaction(transaction, self.private_key)
-            tx_hash = self.w3.eth.send_raw_transaction(signed_txn.rawTransaction)
+            tx_hash = self.w3.eth.send_raw_transaction(signed_txn.raw_transaction)
             
             # Record transaction
             BlockchainTransaction.objects.create(
@@ -199,7 +171,7 @@ class Web3Service:
             
             # Sign and send transaction
             signed_txn = self.w3.eth.account.sign_transaction(transaction, buyer_private_key)
-            tx_hash = self.w3.eth.send_raw_transaction(signed_txn.rawTransaction)
+            tx_hash = self.w3.eth.send_raw_transaction(signed_txn.raw_transaction)
             
             # Record transaction
             BlockchainTransaction.objects.create(

@@ -55,7 +55,12 @@ class ProduceViewSet(viewsets.ModelViewSet):
         # Filter by farmer
         farmer_address = self.request.query_params.get('farmer', None)
         if farmer_address:
+            farmer_address = farmer_address.lower()
+            print(f"[DEBUG] Filtering produces for farmer_address: {farmer_address}")
             queryset = queryset.filter(farmer_address=farmer_address)
+            print(f"[DEBUG] Found {queryset.count()} produces for farmer_address: {farmer_address}")
+            for p in queryset:
+                print(f"[DEBUG] Produce: {p.name}, Farmer Address: {p.farmer_address}")
 
         return queryset.order_by('-created_at')
 
@@ -156,6 +161,7 @@ class ProduceViewSet(viewsets.ModelViewSet):
                     continue
 
                 # Create produce record
+                print(f"[DEBUG] Syncing produce: {produce_data['name']} for farmer {produce_data['farmer']}")
                 Produce.objects.create(
                     blockchain_id=produce_data['id'],
                     contract_address=web3_service.contract_address,
@@ -163,7 +169,7 @@ class ProduceViewSet(viewsets.ModelViewSet):
                     quantity=produce_data['quantity'],
                     price_per_unit=produce_data['price_per_unit'],
                     total_price=produce_data['total_price'],
-                    farmer_address=produce_data['farmer'],
+                    farmer_address=produce_data['farmer'].lower(),
                     buyer_address=produce_data['buyer'] if produce_data['buyer'] != '0x0000000000000000000000000000000000000000' else None,
                     is_sold=produce_data['is_sold'],
                     listed_timestamp=datetime.fromtimestamp(produce_data['listed_timestamp']),

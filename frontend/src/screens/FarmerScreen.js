@@ -14,11 +14,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { produceAPI, apiUtils } from '../services/api';
-
-// For demo purposes, using the same farmer address from our smart contract
-const FARMER_ADDRESS = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266';
+import { useWeb3 } from '../hooks/useWeb3';
 
 export default function FarmerScreen({ navigation }) {
+  const { account, isConnected } = useWeb3();
   const [myProduces, setMyProduces] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -30,16 +29,23 @@ export default function FarmerScreen({ navigation }) {
   });
 
   useEffect(() => {
-    loadMyProduces();
-  }, []);
+    if (isConnected && account) {
+      loadMyProduces();
+    }
+  }, [isConnected, account]);
 
   const loadMyProduces = async () => {
+    if (!account) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
-      // Filter produces by farmer address
-      const response = await produceAPI.filter({ farmer: FARMER_ADDRESS });
+      // Always use lowercase for filtering
+      const response = await produceAPI.filter({ farmer: account.toLowerCase() });
       const produces = response.data.results || response.data;
-      
+
       setMyProduces(produces);
       calculateStats(produces);
     } catch (error) {
@@ -148,19 +154,20 @@ export default function FarmerScreen({ navigation }) {
       <Text style={styles.title}>🌾 My Farm</Text>
       <Text style={styles.subtitle}>Manage your agricultural produce</Text>
       
-      <View style={styles.farmerInfo}>
-        <Ionicons name="person-circle-outline" size={24} color="#2E7D32" />
-        <Text style={[styles.farmerAddress, { marginLeft: 8 }]}>
-          {apiUtils.formatAddress(FARMER_ADDRESS)}
-        </Text>
-      </View>
+      {account && (
+        <View style={styles.farmerInfo}>
+          <Ionicons name="person-circle-outline" size={24} color="#2E7D32" />
+          <Text style={[styles.farmerAddress, { marginLeft: 8 }]}>
+            {apiUtils.formatAddress(account)}
+          </Text>
+        </View>
+      )}
 
       {renderStatsCard()}
       
       <TouchableOpacity
         style={styles.addButton}
         onPress={() => {
-          console.log('🔥 List New Produce button pressed!');
           navigation.navigate('ListProduce');
         }}
       >
@@ -169,6 +176,18 @@ export default function FarmerScreen({ navigation }) {
       </TouchableOpacity>
     </View>
   );
+
+  if (!isConnected) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Ionicons name="wallet-outline" size={64} color="#ccc" />
+        <Text style={styles.emptyTitle}>Wallet Not Connected</Text>
+        <Text style={styles.emptySubtitle}>
+          Please connect your wallet to view your farm
+        </Text>
+      </View>
+    );
+  }
 
   if (loading && !refreshing) {
     return (

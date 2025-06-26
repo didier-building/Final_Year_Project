@@ -9,29 +9,34 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  TextInput,
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { produceAPI, apiUtils } from '../services/api';
+import { web3Service } from '../services/web3Service';
 
 export default function ProduceDetailScreen({ route, navigation }) {
   const { produce } = route.params;
   const [loading, setLoading] = useState(false);
-  const [privateKey, setPrivateKey] = useState('');
   const [showPurchaseForm, setShowPurchaseForm] = useState(false);
 
+  // Helper to initialize contract if needed
+  const ensureContract = async () => {
+    if (!web3Service.contract) {
+      await web3Service.connectWallet();
+      web3Service.initContract(produce.contract_address);
+    }
+  };
+
   const handlePurchase = async () => {
-    if (!privateKey.trim()) {
-      Alert.alert('Error', 'Please enter your private key');
+    Alert.alert('DEBUG', 'handlePurchase called');
+    if (!web3Service.isMetaMaskInstalled()) {
+      Alert.alert(
+        'MetaMask Not Detected',
+        'MetaMask is not installed or not available in this browser. Please use a web browser with MetaMask installed.'
+      );
       return;
     }
-
-    if (!privateKey.startsWith('0x') || privateKey.length !== 66) {
-      Alert.alert('Error', 'Invalid private key format');
-      return;
-    }
-
     Alert.alert(
       'Confirm Purchase',
       `Are you sure you want to purchase ${produce.name} for ${apiUtils.formatPrice(produce.total_price_eth)} ETH?`,
@@ -43,27 +48,39 @@ export default function ProduceDetailScreen({ route, navigation }) {
   };
 
   const confirmPurchase = async () => {
+    if (!web3Service.contract) {
+      Alert.alert(
+        'Contract Not Initialized',
+        'The smart contract is not initialized. Please refresh the page or reconnect your wallet.'
+      );
+      return;
+    }
     try {
       setLoading(true);
-      const response = await produceAPI.purchase(produce.id, {
-        buyer_private_key: privateKey,
+      await ensureContract();
+      // Call MetaMask buyProduce
+      console.log('[DEBUG] Calling buyProduce with:', produce.blockchain_id, produce.total_price_eth);
+      const txResult = await web3Service.buyProduce(produce.blockchain_id, produce.total_price_eth);
+      console.log('[DEBUG] Transaction result:', txResult);
+      // Notify backend to update DB (optional, if needed)
+      await produceAPI.purchase(produce.id, {
+        transaction_hash: txResult.transactionHash,
       });
-
       Alert.alert(
         'Purchase Submitted!',
-        `Your purchase has been submitted to the blockchain.\n\nTransaction Hash: ${response.data.transaction_hash}\n\nPlease wait for confirmation.`,
+        `Your purchase has been submitted to the blockchain.\n\nTransaction Hash: ${txResult.transactionHash}\n\nPlease wait for confirmation.`,
         [
           {
             text: 'OK',
             onPress: () => {
               setShowPurchaseForm(false);
-              setPrivateKey('');
               navigation.goBack();
             },
           },
         ]
       );
     } catch (error) {
+      console.error('[ERROR] MetaMask buyProduce failed:', error);
       const errorInfo = apiUtils.handleError(error);
       Alert.alert('Purchase Failed', errorInfo.message);
     } finally {
@@ -137,63 +154,22 @@ export default function ProduceDetailScreen({ route, navigation }) {
 
       {!produce.is_sold && (
         <View style={styles.purchaseSection}>
-          {!showPurchaseForm ? (
-            <TouchableOpacity
-              style={styles.purchaseButton}
-              onPress={() => setShowPurchaseForm(true)}
-            >
-              <Ionicons name="card-outline" size={24} color="white" />
-              <Text style={styles.purchaseButtonText}>
-                Purchase for {apiUtils.formatPrice(produce.total_price_eth)} ETH
-              </Text>
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.purchaseForm}>
-              <Text style={styles.formTitle}>🔐 Enter Your Private Key</Text>
-              <Text style={styles.formSubtitle}>
-                Your private key is needed to sign the blockchain transaction
-              </Text>
-              
-              <TextInput
-                style={styles.privateKeyInput}
-                placeholder="0x..."
-                value={privateKey}
-                onChangeText={setPrivateKey}
-                secureTextEntry
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              
-              <View style={styles.formButtons}>
-                <TouchableOpacity
-                  style={styles.cancelButton}
-                  onPress={() => {
-                    setShowPurchaseForm(false);
-                    setPrivateKey('');
-                  }}
-                >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity
-                  style={[
-                    styles.confirmButton,
-                    loading && styles.disabledButton
-                  ]}
-                  onPress={loading ? undefined : handlePurchase}
-                >
-                  {loading ? (
-                    <ActivityIndicator size="small" color="white" />
-                  ) : (
-                    <>
-                      <Ionicons name="checkmark-outline" size={20} color="white" />
-                      <Text style={styles.confirmButtonText}>Confirm Purchase</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
+          <TouchableOpacity
+            style={styles.purchaseButton}
+            onPress={handlePurchase}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <>
+                <Ionicons name="card-outline" size={24} color="white" />
+                <Text style={styles.purchaseButtonText}>
+                  Purchase for {apiUtils.formatPrice(produce.total_price_eth)} ETH
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
         </View>
       )}
     </ScrollView>
@@ -297,67 +273,5 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 18,
     fontWeight: 'bold',
-  },
-  purchaseForm: {
-    backgroundColor: 'white',
-    padding: 20,
-    borderRadius: 12,
-    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-    elevation: 3,
-  },
-  formTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 8,
-  },
-  formSubtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 16,
-  },
-  privateKeyInput: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    marginBottom: 16,
-    backgroundColor: '#f9f9f9',
-  },
-  formButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  cancelButton: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    color: '#666',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  confirmButton: {
-    flex: 2,
-    backgroundColor: '#2E7D32',
-    paddingVertical: 12,
-    borderRadius: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  confirmButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  disabledButton: {
-    opacity: 0.6,
   },
 });
